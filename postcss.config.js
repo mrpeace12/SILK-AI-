@@ -1,6 +1,6 @@
 export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
+  plugins: [
+    (await import('@tailwindcss/postcss')).default(),
+    (await import('autoprefixer')).default(),
+  ],
 }
