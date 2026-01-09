@@ -8,8 +8,9 @@ export default async function handler(req, res) {
   try {
     const { message } = req.body;
 
-    const completion = await groq.chat.completions.create({
-      model: "llama3-70b-8192",
+const completion = await groq.chat.completions.create({
+  timeout: 20000,
+model: "mixtral-8x7b-32768",
       messages: [
         { role: "system", content: "You are SILK AI, a smart helpful assistant." },
         { role: "user", content: message }
