@@ -6,14 +6,18 @@ const groq = new Groq({
 
 export default async function handler(req, res) {
   try {
-    const { message } = req.body;
+const { message, prompt } = req.body;
+const userMessage = message || prompt;
 
+if (!userMessage) {
+  return res.status(400).json({ reply: "No prompt provided" });
+}
 const completion = await groq.chat.completions.create({
   timeout: 20000,
 model: "mixtral-8x7b-32768",
       messages: [
         { role: "system", content: "You are SILK AI, a smart helpful assistant." },
-        { role: "user", content: message }
+        { role: "user", content: usermessage }
       ]
     });
 
