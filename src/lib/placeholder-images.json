@@ -1,0 +1,34 @@
+{
+  "placeholderImages": [
+    {
+      "id": "user-avatar",
+      "description": "User profile avatar",
+      "imageUrl": "https://images.unsplash.com/photo-1710974481447-fb001ad9ad5a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwZXJzb24lMjBmYWNlfGVufDB8fHx8MTc2ODIxNzE0N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person face"
+    },
+    {
+      "id": "ai-avatar",
+      "description": "AI assistant avatar",
+      "imageUrl": "https://images.unsplash.com/photo-1767433137780-9a065fd295ab?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxhYnN0cmFjdCUyMHJvYm90fGVufDB8fHx8MTc2ODEyMzY3MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract robot"
+    },
+    {
+      "id": "carousel-1",
+      "description": "Carousel image 1",
+      "imageUrl": "https://images.unsplash.com/photo-1610552050890-fe99536c2615?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxuYXR1cmUlMjBsYW5kc2NhcGV8ZW58MHx8fHwxNzY4MTUwNjc3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "nature landscape"
+    },
+    {
+      "id": "carousel-2",
+      "description": "Carousel image 2",
+      "imageUrl": "https://images.unsplash.com/photo-1643875396528-5770014cefdf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxjaXR5JTIwYXJjaGl0ZWN0dXJlfGVufDB8fHx8MTc2ODIyMDI3NHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "city architecture"
+    },
+    {
+      "id": "carousel-3",
+      "description": "Carousel image 3",
+      "imageUrl": "https://images.unsplash.com/photo-1604871000636-074fa5117945?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8YWJzdHJhY3QlMjBhcnR8ZW58MHx8fHwxNzY4MTM5NTIxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract art"
+    }
+  ]
+}

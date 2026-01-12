@@ -1,0 +1,196 @@
+/**
+ * == Firestore Security Rules: SILK AI Prototyping ==
+ *
+ * This ruleset is designed for rapid prototyping and iteration while maintaining
+ * strict authorization security. It allows flexibility in data shapes but rigidly
+ * controls who can access or modify data.
+ *
+ * Core Philosophy:
+ * The security model is based on strict user ownership. All user-specific data is
+ * isolated within a unique path tied to the user's Authentication UID. This ensures
+ * that users can only ever access their own information.
+ *
+ * Data Structure:
+ * The data is organized hierarchically to enforce ownership naturally through path
+ * matching. Authenticated user data is stored under `/users/{userId}`, while
+ * anonymous user data is segregated into `/anonymous_users/{anonymousUserId}`.
+ * This separation prevents data mixing and simplifies access control.
+ * - /users/{userId} -> User profile document.
+ * - /users/{userId}/chatSessions/{chatSessionId} -> User's chat history.
+ * - /users/{userId}/chatSessions/{chatSessionId}/chatMessages/{chatMessageId} -> Messages in a session.
+ * - /anonymous_users/{anonymousUserId}/... -> Mirrored structure for anonymous users.
+ *
+ * Key Security Decisions:
+ * - Strict Data Isolation: A user (authenticated or anonymous) can only interact
+ *   with documents under their own UID path (`/users/{their_uid}` or
+ *   `/anonymous_users/{their_uid}`).
+ * - No User Enumeration: Listing documents in the top-level `/users` collection
+ *   is explicitly disallowed to protect user privacy.
+ * - Path-Based Authorization: Security is enforced by matching the `request.auth.uid`
+ *   to the user ID wildcard in the document path. This is highly performant as it
+ *   avoids extra database reads (`get()` calls) for authorization checks.
+ * - Relational Integrity: On document creation, rules validate that key identifiers
+ *   (like `userId` or `sessionId`) within the document data match the corresponding IDs
+ *   in the path, ensuring data consistency. These identifiers are immutable on update.
+ *
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * == Global Helper Functions ==
+     * Reusable functions to ensure consistency and readability across the ruleset.
+     */
+
+    /**
+     * Checks if the requesting user is signed in (either authenticated or anonymous).
+     * All secure operations require an authenticated request.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the requesting user's UID matches the provided userId from the path.
+     * This is the core function for enforcing the ownership model.
+     * @param userId The user ID from the document path.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * A stricter version of isOwner for state-changing operations (update, delete).
+     * It ensures the user is the owner AND that the document actually exists.
+     * This prevents wasted writes and potential edge cases on non-existent data.
+     * @param userId The user ID from the document path.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * Validates that the internal `id` field of a new user document matches its
+     * document ID (which is the user's auth UID).
+     * @param userId The user ID from the document path.
+     */
+    function hasMatchingUserId(userId) {
+      return request.resource.data.id == userId;
+    }
+
+    /**
+     * Enforces immutability of the internal `id` field on a user document after creation.
+     */
+    function userIdIsImmutable() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+    /**
+     * Validates that a new document's internal `userId` field (for child collections)
+     * matches the owner's ID from the path.
+     * @param ownerId The owner's user ID from the document path.
+     */
+    function hasMatchingOwnerId(ownerId) {
+      return request.resource.data.userId == ownerId;
+    }
+    
+    /**
+     * Enforces immutability of the internal `userId` field on child documents.
+     */
+    function ownerIdIsImmutable() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+
+    /**
+     * Validates that a new chat message's `sessionId` matches the parent collection ID.
+     * @param sessionId The session ID from the document path.
+     */
+    function hasMatchingSessionId(sessionId) {
+      return request.resource.data.sessionId == sessionId;
+    }
+    
+    /**
+     * Enforces immutability of the `sessionId` field on chat message documents.
+     */
+    function sessionIdIsImmutable() {
+      return request.resource.data.sessionId == resource.data.sessionId;
+    }
+
+    /**
+     * @description Manages user profile documents. Only the owner of the profile can
+     *              create, read, update, or delete it. User enumeration is forbidden.
+     * @path /users/{userId}
+     * @allow (create) A new user creating their own profile document, where request.auth.uid matches the document ID {userId}.
+     * @deny (get) A signed-in user trying to read another user's profile document.
+     * @principle Enforces self-creation and strict data ownership for a user's root document.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && hasMatchingUserId(userId);
+      allow update: if isExistingOwner(userId) && userIdIsImmutable();
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Manages chat session documents for a specific authenticated user.
+     *              Access is restricted to the user specified in the path.
+     * @path /users/{userId}/chatSessions/{chatSessionId}
+     * @allow (list) The document owner listing all their own chat sessions.
+     * @deny (create) Another user trying to create a chat session in someone else's account.
+     * @principle Restricts access to a user's own data tree, ensuring privacy of chat history.
+     */
+    match /users/{userId}/chatSessions/{chatSessionId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && hasMatchingOwnerId(userId);
+      allow update: if isExistingOwner(userId) && ownerIdIsImmutable();
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Manages individual chat messages within a user's session. Access is
+     *              inherited from the parent chat session and user.
+     * @path /users/{userId}/chatSessions/{chatSessionId}/chatMessages/{chatMessageId}
+     * @allow (create) The owner creating a new message within their own chat session.
+     * @deny (get) A different user attempting to read messages from another user's session.
+     * @principle Restricts access to a user's own data tree, ensuring privacy of chat content.
+     */
+    match /users/{userId}/chatSessions/{chatSessionId}/chatMessages/{chatMessageId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && hasMatchingSessionId(chatSessionId);
+      allow update: if isExistingOwner(userId) && sessionIdIsImmutable();
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Manages chat session documents for a specific anonymous user.
+     *              The rules mirror those for authenticated users but apply to the
+     *              separate anonymous user collection.
+     * @path /anonymous_users/{anonymousUserId}/chatSessions/{chatSessionId}
+     * @allow (get) An anonymous user retrieving one of their own chat sessions.
+     * @deny (list) An authenticated user trying to list an anonymous user's sessions.
+     * @principle Restricts access to an anonymous user's own temporary data tree.
+     */
+    match /anonymous_users/{anonymousUserId}/chatSessions/{chatSessionId} {
+      allow get, list: if isOwner(anonymousUserId);
+      allow create: if isOwner(anonymousUserId) && hasMatchingOwnerId(anonymousUserId);
+      allow update: if isExistingOwner(anonymousUserId) && ownerIdIsImmutable();
+      allow delete: if isExistingOwner(anonymousUserId);
+    }
+
+    /**
+     * @description Manages individual chat messages within an anonymous user's session.
+     * @path /anonymous_users/{anonymousUserId}/chatSessions/{chatSessionId}/chatMessages/{chatMessageId}
+     * @allow (create) An anonymous user creating a new message in their own session.
+     * @deny (delete) A different anonymous user trying to delete a message they do not own.
+     * @principle Restricts access to an anonymous user's own temporary data tree.
+     */
+    match /anonymous_users/{anonymousUserId}/chatSessions/{chatSessionId}/chatMessages/{chatMessageId} {
+      allow get, list: if isOwner(anonymousUserId);
+      allow create: if isOwner(anonymousUserId) && hasMatchingSessionId(chatSessionId);
+      allow update: if isExistingOwner(anonymousUserId) && sessionIdIsImmutable();
+      allow delete: if isExistingOwner(anonymousUserId);
+    }
+  }
+}

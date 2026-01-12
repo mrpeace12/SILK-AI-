@@ -1,0 +1,249 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the SILK AI application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user.",
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "username": {
+          "type": "string",
+          "description": "User's username."
+        },
+        "profilePictureUrl": {
+          "type": "string",
+          "description": "URL of the user's profile picture.",
+          "format": "uri"
+        },
+        "registrationDate": {
+          "type": "string",
+          "description": "Date and time when the user registered.",
+          "format": "date-time"
+        },
+        "lastLogin": {
+          "type": "string",
+          "description": "Date and time of the user's last login.",
+          "format": "date-time"
+        },
+        "allowAiTraining": {
+          "type": "boolean",
+          "description": "Indicates whether the user allows their data to be used for AI model training.",
+          "format": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "username",
+        "registrationDate"
+      ]
+    },
+    "ChatSession": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatSession",
+      "type": "object",
+      "description": "Represents a chat session between a user and the AI.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the chat session.",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N ChatSession)"
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Date and time when the chat session started.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "Date and time when the chat session ended.",
+          "format": "date-time"
+        },
+        "sessionName": {
+          "type": "string",
+          "description": "Name of this session. Can be user or AI generated."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "startTime"
+      ]
+    },
+    "ChatMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatMessage",
+      "type": "object",
+      "description": "Represents a single message within a chat session.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the chat message.",
+          "format": "uuid"
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Reference to ChatSession. (Relationship: ChatSession 1:N ChatMessage)"
+        },
+        "sender": {
+          "type": "string",
+          "description": "Indicates who sent the message (user or AI)."
+        },
+        "messageText": {
+          "type": "string",
+          "description": "The actual text content of the message."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Date and time when the message was sent.",
+          "format": "date-time"
+        },
+        "contentType": {
+          "type": "string",
+          "description": "The type of message (text, image, file)."
+        },
+        "contentUrl": {
+          "type": "string",
+          "description": "The URL where the content is located.  Applicable for images and files.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "sender",
+        "messageText",
+        "timestamp"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information. The 'userId' parameter is the Firebase Authentication UID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user, corresponding to their Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/chatSessions/{chatSessionId}",
+        "definition": {
+          "entityName": "ChatSession",
+          "schema": {
+            "$ref": "#/backend/entities/ChatSession"
+          },
+          "description": "Stores chat sessions for a specific user. The 'userId' parameter ensures ownership. Path based ownership: all chat sessions belong to the user with ID `userId`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user who owns the chat session."
+            },
+            {
+              "name": "chatSessionId",
+              "description": "The unique ID of the chat session."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/chatSessions/{chatSessionId}/chatMessages/{chatMessageId}",
+        "definition": {
+          "entityName": "ChatMessage",
+          "schema": {
+            "$ref": "#/backend/entities/ChatMessage"
+          },
+          "description": "Stores individual chat messages within a chat session. The 'userId' and 'chatSessionId' parameters ensure proper nesting and ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user who owns the chat session."
+            },
+            {
+              "name": "chatSessionId",
+              "description": "The unique ID of the chat session."
+            },
+            {
+              "name": "chatMessageId",
+              "description": "The unique ID of the chat message."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/anonymous_users/{anonymousUserId}/chatSessions/{chatSessionId}",
+        "definition": {
+          "entityName": "ChatSession",
+          "schema": {
+            "$ref": "#/backend/entities/ChatSession"
+          },
+          "description": "Stores chat sessions for an anonymous user.",
+          "params": [
+            {
+              "name": "anonymousUserId",
+              "description": "The unique ID of the anonymous user."
+            },
+            {
+              "name": "chatSessionId",
+              "description": "The unique ID of the chat session."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/anonymous_users/{anonymousUserId}/chatSessions/{chatSessionId}/chatMessages/{chatMessageId}",
+        "definition": {
+          "entityName": "ChatMessage",
+          "schema": {
+            "$ref": "#/backend/entities/ChatMessage"
+          },
+          "description": "Stores individual chat messages within a chat session for anonymous users.",
+          "params": [
+            {
+              "name": "anonymousUserId",
+              "description": "The unique ID of the anonymous user."
+            },
+            {
+              "name": "chatSessionId",
+              "description": "The unique ID of the chat session."
+            },
+            {
+              "name": "chatMessageId",
+              "description": "The unique ID of the chat message."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This Firestore structure prioritizes authorization independence and QAPs (Query-based Access Patterns). User data is stored under `/users/{userId}`, which is a simple path-based ownership model. Chat sessions and messages are nested under the user, maintaining a clear ownership hierarchy. Denormalization is not strictly needed here as the security rules will rely on the `request.auth.uid` matching the `userId` in the path. AI training preference (`allowAiTraining`) is stored directly within the user document. The anonymous authentication option stores chat data related to not signed in users in a `anonymous_users` collection. Data for anonymous users is stored by their unique auto-generated ID."
+  }
+}
